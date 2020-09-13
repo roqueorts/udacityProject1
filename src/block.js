@@ -41,13 +41,13 @@ class Block {
             // Save in auxiliary variable the current block hash
 
             const currentHash = self.hash;
-
+            self.hash = null;
             // Recalculate the hash of the Block
             self.hash = SHA256(JSON.stringify(self)).toString();
             // Comparing if the hashes changed
             if (currentHash !== self.hash) {
                 // Returning the Block is not valid
-                reject(false);
+                reject(Error(" Block tempered "));
             }
 
             else {
@@ -73,15 +73,15 @@ class Block {
         // Getting the encoded data saved in the Block
         return new Promise((resolve, reject) => {
             let encodedData = self.body;
-
             // Decoding the data to retrieve the JSON representation of the object
+            let decodedData = hex2ascii(encodedData);
             // Parse the data to an object to be retrieve.
-            let data = JSON.parse(new Buffer(encodedData, 'hex').toString());
-
+            let data = JSON.parse(decodedData);
             if (self.height > 0)
                 resolve(data);
             else
-                reject(Error('Error, you are not allowed to get data from genesis block'));
+                resolve(false);
+            // reject(Error('Error, you are not allowed to get data from genesis block'));
             // Resolve with the data if the object isn't the Genesis block
         });
 

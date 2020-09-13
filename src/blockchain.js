@@ -127,21 +127,18 @@ class Blockchain {
         let self = this;
         return new Promise(async (resolve, reject) => {
             let messageTime = parseInt(message.split(':')[1]);
-            console.log('messageTime: ' + messageTime);
             let currentTime = parseInt(new Date().getTime().toString().slice(0, -3));
             if (currentTime - messageTime < 300) {
                 const verified = bitcoinMessage.verify(message, address, signature);
-                console.log(verified);
                 if (verified) {
-                    let newBlock = new BlockClass.Block({ data: { "star": star, "owner": address } });
+                    let newBlock = new BlockClass.Block({ "star": star, "owner": address });
                     self._addBlock(newBlock).then((result) => {
 
-                        console.log(`Block Hash: ${result.hash}`);
-                        console.log(`Block: ${JSON.stringify(result)}`);
+                        // console.log(`Block Hash: ${result.hash}`);
+                        // console.log(`Block: ${JSON.stringify(result)}`);
                         resolve(result); // Resolve with block
 
                     }, (error) => {
-                        console.log(error);
                         reject(Error(error));
                     });
 
@@ -185,7 +182,7 @@ class Blockchain {
             if (block) {
                 resolve(block);
             } else {
-                resolve(null);
+                reject(null);
             }
         });
     }
@@ -201,17 +198,19 @@ class Blockchain {
         let stars = [];
         return new Promise((resolve, reject) => {
             try {
-                self.chain.forEach(element => {
-                    if (element.data.address === address) {
-                        // Decode each star and push it
-                        stars.push(new Buffer(element.data.star, 'hex'));
+                self.chain.forEach(async (element) => {
+                    let data = await element.getBData();
+                    if (data) {
+                        if (data.owner === address) {
+                            stars.push(data);
+                        }
                     }
                 });
                 resolve(stars);
 
 
             } catch (error) {
-                reject(error);
+                reject(Error('Error con get Stars: ' + error));
             }
         });
     }
@@ -222,12 +221,55 @@ class Blockchain {
      * 1. You should validate each block using `validateBlock`
      * 2. Each Block should check the with the previousBlockHash
      */
+    /* validateChain() {
+         let self = this;
+         let errorLog = [];
+         let block;
+         return new Promise(async (resolve, reject) => {
+             try {
+                 for (let i = 1; i < self.chain.length; i++) {
+ 
+                     block = self.chain[i];
+                     await block.validate() ? true : errorLog.push("Block tempered")
+                     if (block.previousBlockHash !== self.chain[i - 1].hash) {
+                         errorLog.push('Chain tempered');
+                     }
+                 }
+                 resolve(errorLog);
+             } catch (error) {
+                 console.log(error);
+             }
+ 
+         });
+     }*/
     validateChain() {
         let self = this;
         let errorLog = [];
         return new Promise(async (resolve, reject) => {
+            try {
+                self.chain.forEach(async block => {
+                    try {
+                        if (block.height > 0) {
+                            if (block.previousBlockHash === self.chain[block.height - 1].hash) {
+                                await block.validate() ? true : errorLog.push("Block tempered");
+                            } else {
+                                errorLog.push('Chain tempered');
+                            }
+                        }
+                    }
+                    catch (error) {
+                        reject(Error(error));
+                    }
+
+                });
+                resolve(errorLog);
+            } catch (error) {
+                reject(Error(error));
+            }
+
 
         });
+
     }
 
 }
